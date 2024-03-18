@@ -7,8 +7,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import org.apache.tika.parser.txt.CharsetDetector;
-import org.apache.tika.parser.txt.CharsetMatch;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -126,13 +124,13 @@ public class ProductController {
             return ResponseEntity.noContent().build();
     }
 
-    private String getDetectedCharset(String text) {
+  /*   private String getDetectedCharset(String text) {
         CharsetDetector cd = new CharsetDetector();
         cd.setText(text.getBytes());
         cd.enableInputFilter(true);
         CharsetMatch cm = cd.detect();
         return cm.getName();
-    }
+    } */
 
     private List<String> convertToCsvFormat(ProductPattern pp) {
         
