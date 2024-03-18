@@ -8,11 +8,11 @@ databaseChangeLog:
             columns:
               - column:
                   name: id
-                  type: char(36)
+                  type: varchar(36)
                   constraints:
                     primaryKey: true
               - column:
-                  name: license_Type
+                  name: license_type
                   type: varchar(20)
               - column:
                   name: exceptions
@@ -38,14 +38,14 @@ databaseChangeLog:
                   name: modified
                   type: TIMESTAMP 
               - column:
-                  name: created_By
+                  name: created_by
                   type: varchar(150)
               - column:
-                  name: modified_By
+                  name: modified_by
                   type: varchar(150)
               - column:
-                  name: working_Set_Id
-                  type: char(36)
+                  name: working_set_id
+                  type: varchar(36)
               - column:
                   name: unclassified
                   type: boolean
@@ -55,7 +55,7 @@ databaseChangeLog:
       author: JY
       changes:
         - createTable:
-            tableName: Working_Set
+            tableName: working_set
             columns:
               - column:
                   name: id
@@ -84,8 +84,8 @@ databaseChangeLog:
                   name: modified
                   type: TIMESTAMP
               - column:
-                  name: created_By
+                  name: created_by
                   type: varchar(150)
               - column:
-                  name: modified_By
+                  name: modified_by
                   type: varchar(150)

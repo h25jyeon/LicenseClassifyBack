@@ -78,9 +78,10 @@ public class WorkingSetController {
             }
         } catch (IOException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
-
     
     private InputStreamReader getEncodedReader(MultipartFile file) {
         
