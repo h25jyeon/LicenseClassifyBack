@@ -35,7 +35,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @RestController
-@RequestMapping("working-set")    
+@RequestMapping("/working-set")    
 public class WorkingSetController {
     @Autowired
     private WorkingSetRepo workingSetRepo;
