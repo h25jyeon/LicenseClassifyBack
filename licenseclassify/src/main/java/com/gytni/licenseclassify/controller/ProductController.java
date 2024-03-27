@@ -60,21 +60,34 @@ public class ProductController {
     private ResponseEntity<String> updateLicenseTypeByAi(@RequestBody ProductPattern data) {
         log.info("updateLicenseTypeByAi Strart : {} ", data);
         
-        if (data != null) {
-            Optional<ProductPattern> opp = productPatternRepo.findById(data.getId());
-            if (!opp.isEmpty()) {
-                ProductPattern pp = opp.get();
-                pp.setExceptions(data.isExceptions());   
-                pp.setFastText(data.getFastText());
-                pp.setLlm(data.getLlm());
-                pp.setEvidences(data.getEvidences());
-                pp.setUnclassified(false);
-                productPatternRepo.save(pp);
-                log.info("updateLicenseTypeByAi 성공 : {}", pp.toString());
-                return ResponseEntity.ok("success");
-            }
+        ProductPattern pp = GetProductPatternFromRepo(data);
+        if (pp != null) {
+            pp.setExceptions(data.isExceptions());   
+            pp.setFastText(data.getFastText());
+            pp.setLlm(data.getLlm());
+            pp.setEvidences(data.getEvidences());
+            pp.setUnclassified(false);
+            productPatternRepo.save(pp);
+            log.info("updateLicenseTypeByAi 성공 : {}", pp.toString());
+            return ResponseEntity.ok("success");
         }
         log.error("updateLicenseTypeByAi 실패");
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/exception")
+    private ResponseEntity<String> updateIsException(@RequestBody ProductPattern data) {
+        log.info("update exception Strart : {} ", data.getId());
+
+        ProductPattern pp = GetProductPatternFromRepo(data);
+        if (pp != null) {
+            pp.setExceptions(data.isExceptions());   
+            if (data.isExceptions()) pp.setUnclassified(false);
+            productPatternRepo.save(pp);
+            log.info("update exception 성공 : {}", pp.toString());
+            return ResponseEntity.ok("success");
+        }
+        log.error("update exception 실패");
         return ResponseEntity.noContent().build();
     }
 
@@ -161,6 +174,18 @@ public class ProductController {
             log.error("Failed to parse JSON data for ProductPattern. Error message: {}", e.getMessage());
         }
         return data;
+    }
+
+    private ProductPattern GetProductPatternFromRepo(ProductPattern data) {
+        ProductPattern pp = null;
+
+        if (data != null) {
+            Optional<ProductPattern> opp = productPatternRepo.findById(data.getId());
+            if (!opp.isEmpty()) {
+                pp = opp.get();
+            }
+        }
+        return pp;
     }
 
 }
