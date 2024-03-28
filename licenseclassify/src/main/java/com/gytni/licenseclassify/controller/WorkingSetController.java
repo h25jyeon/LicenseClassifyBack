@@ -41,6 +41,7 @@ public class WorkingSetController {
     private WorkingSetRepo workingSetRepo;
     @Autowired
     private ProductPatternRepo productPatternRepo;
+
     private ObjectMapper jsonMapper = new ObjectMapper();
 
     @GetMapping("")
@@ -48,10 +49,14 @@ public class WorkingSetController {
         Iterable<WorkingSet> wsIter = workingSetRepo.findAll();
         List<WorkingSet> wss = new ArrayList<>();
         wsIter.forEach(wss::add);
+        
         if (wss.isEmpty())
             return ResponseEntity.noContent().build();
-        else
+        else{
+            for (WorkingSet ws : wss) 
+                ws.setName( (int)(getClassifyPerc(ws.getId()) * 100) + "%\t" + ws.getName());
             return ResponseEntity.ok(wss);
+        }
     }
 
     @PostMapping("")
@@ -122,6 +127,12 @@ public class WorkingSetController {
         } catch (JsonProcessingException e) {
             log.error("Failed to map pattern to JSON. {}", e);
         }
+    }
+
+    private double getClassifyPerc(UUID workingSetId) {
+        List<ProductPattern> patterns = productPatternRepo.findByWorkingSetId(workingSetId);
+        long unclassifiedFalseCount = patterns.stream().filter(pattern -> !pattern.isUnclassified()).count();
+        return (double) unclassifiedFalseCount / patterns.size();
     }
 
 }
