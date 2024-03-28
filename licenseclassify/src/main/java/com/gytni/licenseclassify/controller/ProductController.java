@@ -11,6 +11,7 @@ import org.checkerframework.checker.index.qual.Positive;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -42,14 +43,16 @@ public class ProductController {
     @Autowired
     private ProductPatternRepo productPatternRepo;
     private ObjectMapper objectMapper = new ObjectMapper();
-    private String[] headerRecord = {"ProductName", "Publisher", "FastText", "Llm", "LicenseType", "Evidences"};
+    private String[] headerRecord = {"ProductName", "Publisher", "exceptions", "FastText", "Llm", "LicenseType", "Evidences"};
     
     @GetMapping("")
     private ResponseEntity<List<ProductPattern>> getProductPatterns(@RequestParam(required = false) Boolean unclassified) {
         List<ProductPattern> pps = new ArrayList<>();
         
-        if (unclassified != null) 
-            pps = productPatternRepo.findByUnclassified(unclassified);
+        if (unclassified != null) {
+            PageRequest pageRequest = PageRequest.of(0, 100, Sort.by("created").ascending().and(Sort.by("patterns").ascending()));
+            pps = productPatternRepo.findByUnclassified(unclassified, pageRequest).getContent();
+        }
         else 
             productPatternRepo.findAll().forEach(pps::add);
 
@@ -91,12 +94,18 @@ public class ProductController {
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/{id}")
-    private ResponseEntity<PageDto<ProductPattern>> GetProductPatternByWsId(@PathVariable UUID id, @Positive @RequestParam int page, @Positive @RequestParam int size) {
+   @GetMapping("/{id}")
+    private ResponseEntity<PageDto<ProductPattern>> GetProductPatternByWsId(
+        @PathVariable UUID id, 
+        @Positive @RequestParam int page, 
+        @Positive @RequestParam int size,
+        @RequestParam(required = false, defaultValue = "false") boolean classifiedOnly) {
         
-        PageRequest pageRequest = PageRequest.of(page - 1, size);
-        Page<ProductPattern> productPatternPage = productPatternRepo.findByWorkingSetIdOrderByCreatedDesc(id, pageRequest);
-        
+        PageRequest pageRequest = PageRequest.of(page - 1, size, Sort.by("patterns").ascending());
+
+        Page<ProductPattern> productPatternPage = (classifiedOnly) ? productPatternRepo.findByWorkingSetIdAndUnclassifiedFalse(id, pageRequest) 
+                                                                   : productPatternRepo.findByWorkingSetIdOrderByCreatedDesc(id, pageRequest);
+
         if (productPatternPage.isEmpty()) return new ResponseEntity<>(HttpStatus.NO_CONTENT);
 
         PageInfo pageInfo = new PageInfo(
@@ -108,11 +117,11 @@ public class ProductController {
             productPatternPage.isLast()
         );
 
-        PageDto<ProductPattern> pageDto = new PageDto<ProductPattern>(productPatternPage.getContent(), pageInfo);
+        PageDto<ProductPattern> pageDto = new PageDto<>(productPatternPage.getContent(), pageInfo);
 
         return new ResponseEntity<>(pageDto, HttpStatus.OK);
     }
-
+    
     @PutMapping("/{id}")
     private ResponseEntity<String> updateLicenseType(@PathVariable UUID id, @RequestParam("newOption") String newType ) {
         Optional<ProductPattern> opp =  productPatternRepo.findById(id);
@@ -165,6 +174,7 @@ public class ProductController {
             JsonNode eviNode = objectMapper.readTree((pp.getEvidences() != null) ? pp.getEvidences() : "");
             data.add(pNode.path("productName").asText()); 
             data.add(pNode.path("publisher").asText());
+            data.add(pp.isExceptions() ? "Yes" : "No" );
             data.add((pp.getFastText() != null) ? pp.getFastText().toString() : "");
             data.add((pp.getLlm() != null) ? pp.getLlm().toString() : "");
             data.add((pp.getLicenseType() != null) ? pp.getLicenseType().toString() : "");

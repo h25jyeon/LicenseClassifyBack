@@ -11,6 +11,7 @@ import com.gytni.licenseclassify.model.ProductPattern;
 
 public interface ProductPatternRepo extends CrudRepository<ProductPattern, UUID> {
     List<ProductPattern> findByWorkingSetId(UUID id);
-    List<ProductPattern> findByUnclassified(boolean unclassified);
+    Page<ProductPattern> findByUnclassified(boolean unclassified, Pageable pageable);
     Page<ProductPattern> findByWorkingSetIdOrderByCreatedDesc(UUID workingSetId, Pageable pageable);
+    Page<ProductPattern> findByWorkingSetIdAndUnclassifiedFalse(UUID workingSetId, Pageable pageable);
 }
