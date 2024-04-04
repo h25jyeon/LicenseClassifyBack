@@ -61,5 +61,8 @@ public class ProductPattern {
     private LocalDateTime modified;
 
     private boolean unclassified = true;
+
+    @Column(length = 1)
+    private String exceptionType;
 }
 

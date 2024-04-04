@@ -89,3 +89,64 @@ databaseChangeLog:
               - column:
                   name: modified_by
                   type: varchar(150)
+  - changeSet:
+      id: 3.add_exception_type_column_to_product_pattern
+      author: JY
+      changes:
+        - addColumn:
+            tableName: Product_Pattern
+            columns:
+              - column:
+                  name: exception_type
+                  type: varchar(1)
+  - changeSet:
+      id: 4.create_exception_type_table
+      author: JY
+      changes:
+        - createTable:
+            tableName: exception_keyword
+            columns:
+              - column:
+                  name: id
+                  type: char(36)
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: publisher
+                  type: varchar(100)
+              - column:
+                  name: product
+                  type: varchar(100)
+              - column:
+                  name: type
+                  type: varchar(50)
+  - changeSet:
+      id: 5.modify_data_type_in_exception_keyword_table
+      author: JY
+      changes:
+        - modifyDataType:
+            columnName: publisher
+            newDataType: varchar(512)
+            tableName: exception_keyword
+        - modifyDataType:
+            columnName: product
+            newDataType: varchar(512)
+            tableName: exception_keyword
+  - changeSet:
+      id: 6.modify_added_ignore_columns_data_type
+      author: JY
+      changes:
+        - modifyDataType:
+            columnName: added
+            newDataType: integer
+            tableName: working_set
+        - modifyDataType:
+            columnName: ignored
+            newDataType: integer
+            tableName: working_set
+
+              
+
+
+                  
+
