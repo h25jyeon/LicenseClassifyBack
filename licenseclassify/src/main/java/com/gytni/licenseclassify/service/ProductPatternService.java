@@ -44,10 +44,10 @@ public class ProductPatternService {
             for (CSVUploadPattern pattern : patterns) {
                 if (pattern.getProductName() != null && pattern.getPublisher() != null) {
                     ProductPattern pp = new ProductPattern();
-                    String ft = fastTextProbabilityService.probability(pattern.getProductName(), pattern.getPublisher());
+                    String ft = fastTextProbabilityService.probability(pattern);
                     pp.setFastText(LicenseType.find(ft));
                     pp.setPatterns(jsonMapper.writeValueAsString(pattern));
-                    String et = exceptionKeywordService.checkIsException(pattern.getProductName(), pattern.getPublisher());
+                    String et = exceptionKeywordService.checkIsException(pattern);
                     pp.setExceptionType(et);
                     pp.setExceptions(!et.equals("N"));
                     pp.setUnclassified(!pp.isExceptions());

@@ -2,6 +2,7 @@ package com.gytni.licenseclassify.controller;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -22,6 +23,10 @@ import com.gytni.licenseclassify.model.WorkingSet;
 import com.gytni.licenseclassify.repo.WorkingSetRepo;
 import com.gytni.licenseclassify.service.ProductPatternService;
 import com.gytni.licenseclassify.service.WorkingSetService;
+import com.opencsv.CSVReader;
+import com.opencsv.CSVReaderBuilder;
+import com.opencsv.RFC4180Parser;
+import com.opencsv.RFC4180ParserBuilder;
 import com.opencsv.bean.CsvToBeanBuilder;
 
 import lombok.extern.slf4j.Slf4j;
@@ -73,7 +78,14 @@ public class WorkingSetController {
                 ws.setHash(fileContentHash);
                 ws = workingSetRepo.save(ws);
 
-                productPatternService.saveProductPattern(new CsvToBeanBuilder<CSVUploadPattern>(reader).withType(CSVUploadPattern.class).build().parse(), ws);
+                RFC4180Parser rfc4180ParserForCsvToBean = new RFC4180ParserBuilder().build();
+                CSVReaderBuilder csvReaderBuilderForCsvToBean = new CSVReaderBuilder(reader).withCSVParser(rfc4180ParserForCsvToBean);
+
+                try (CSVReader csvReaderForCsvToBean = csvReaderBuilderForCsvToBean.build()) {
+                    List<CSVUploadPattern> parsedData = new CsvToBeanBuilder<CSVUploadPattern>(csvReaderForCsvToBean).withType(CSVUploadPattern.class).build().parse();
+                    productPatternService.saveProductPattern(parsedData, ws);
+                }
+
                 ws = workingSetRepo.save(ws);
                 return ResponseEntity.ok(ws);
             }
@@ -83,7 +95,4 @@ public class WorkingSetController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
-    
-
-
 }

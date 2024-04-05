@@ -17,6 +17,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -31,6 +32,7 @@ import com.gytni.licenseclassify.model.PageDto;
 import com.gytni.licenseclassify.model.PageInfo;
 import com.gytni.licenseclassify.model.ProductPattern;
 import com.gytni.licenseclassify.repo.ProductPatternRepo;
+import com.gytni.licenseclassify.repo.WorkingSetRepo;
 import com.gytni.licenseclassify.service.ProductPatternService;
 import com.opencsv.CSVWriter;
 
@@ -44,6 +46,9 @@ public class ProductController {
     private ProductPatternRepo productPatternRepo;
     @Autowired
     private ProductPatternService productPatternService;
+    @Autowired
+    private WorkingSetRepo workingSetRepo;
+
 
     private String[] headerRecord = {"ProductName", "Publisher", "exceptionType", "FastText", "Llm", "LicenseType", "Evidences"};
     
@@ -96,6 +101,7 @@ public class ProductController {
         log.error("update exception 실패");
         return ResponseEntity.noContent().build();
     }
+
     @GetMapping("/{id}")
     private ResponseEntity<PageDto<ProductPattern>> GetProductPatternByWsId(
         @PathVariable UUID id, 
@@ -184,36 +190,22 @@ public class ProductController {
         return ResponseEntity.noContent().build();
     }
 
-    /* private List<String> convertToCsvFormat(ProductPattern pp) {
-        
-        List<String> data = new ArrayList<>();
+    @DeleteMapping("/{id}")
+    private ResponseEntity<String> deleteProductPatternById(@PathVariable UUID id) {
         try {
-            JsonNode pNode = objectMapper.readTree((pp.getPatterns() != null) ? pp.getPatterns() : "");
-            JsonNode eviNode = objectMapper.readTree((pp.getEvidences() != null) ? pp.getEvidences() : "");
-            data.add(pNode.path("productName").asText()); 
-            data.add(pNode.path("publisher").asText());
-            data.add(pp.getExceptionType());
-            data.add((pp.getFastText() != null) ? pp.getFastText().toString() : "");
-            data.add((pp.getLlm() != null) ? pp.getLlm().toString() : "");
-            data.add((pp.getLicenseType() != null) ? pp.getLicenseType().toString() : "");
-            eviNode.forEach(node -> data.add(node.path("url").asText()));
-
-        } catch (IOException e) {
-            log.error("Failed to parse JSON data for ProductPattern. Error message: {}", e.getMessage());
+            if (id != null) {
+                UUID wsId = productPatternRepo.findById(id).get().getWorkingSetId();
+                productPatternRepo.deleteById(id);   
+                if (productPatternRepo.findByWorkingSetId(wsId).size() < 1) 
+                    workingSetRepo.deleteById(wsId);
+                return ResponseEntity.noContent().build(); 
+            }
+            return ResponseEntity.notFound().build(); 
+        } catch (Exception e) {
+            log.error("ID : {} 삭제 중 오류 ", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("삭제 중에 오류가 발생했습니다."); 
         }
-        return data;
     }
 
-    private ProductPattern GetProductPatternFromRepo(ProductPattern data) {
-        ProductPattern pp = null;
-
-        if (data != null) {
-            Optional<ProductPattern> opp = productPatternRepo.findById(data.getId());
-            if (!opp.isEmpty()) {
-                pp = opp.get();
-            }
-        }
-        return pp;
-    } */
-
+    
 }

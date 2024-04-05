@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.gytni.licenseclassify.Type.ExceptionType;
+import com.gytni.licenseclassify.model.CSVUploadPattern;
 import com.gytni.licenseclassify.model.ExceptionKeyword;
 import com.gytni.licenseclassify.repo.ExceptionKeywordRepo;
 
@@ -19,8 +20,10 @@ public class ExceptionKeywordService {
         return exceptionKeywordRepo.findByTypeAndProductAndPublisher(type,productName,publisher).size() > 0 ? true : false;
     }
 
-    public String checkIsException(String productName, String publisher) {
-
+    public String checkIsException(CSVUploadPattern productPattern) {
+        String productName = productPattern.getProductName();
+        String publisher = productPattern.getPublisher();
+        
         List<ExceptionKeyword> exactMatchKeywords = exceptionKeywordRepo.findByTypeAndProductAndPublisher(ExceptionType.PUBLISHER_PRODUCT_EXACT_MATCH, productName, publisher);
         if (!exactMatchKeywords.isEmpty())          return ExceptionType.PUBLISHER_PRODUCT_EXACT_MATCH.getLabel();
 

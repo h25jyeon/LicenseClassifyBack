@@ -6,6 +6,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
 import com.gytni.licenseclassify.Type.LicenseType;
+import com.gytni.licenseclassify.model.CSVUploadPattern;
 
 import fasttext.FastText;
 import fasttext.FastTextPrediction;
@@ -27,13 +28,13 @@ public class FastTextProbabilityService {
         productModel = FastText.loadModel(productModelPath);
         publisherModel = FastText.loadModel(publisherModelPath);
     }
-
-    public String probability(String appwizName, String publisher) {
-        List<FastTextPrediction> ps = productModel.predictAll(appwizName);
+    
+    public String probability(CSVUploadPattern productPattern) {
+        List<FastTextPrediction> ps = productModel.predictAll(productPattern.getProductName());
         List<FastTextPrediction> pbs = null;
 
-        if (StringUtils.isNotBlank(publisher)) 
-            pbs = publisherModel.predictAll(publisher);
+        if (StringUtils.isNotBlank(productPattern.getPublisher())) 
+            pbs = publisherModel.predictAll(productPattern.getPublisher());
 
         FastTextPrediction p = ps.get(0);
         FastTextPrediction pb = null;
