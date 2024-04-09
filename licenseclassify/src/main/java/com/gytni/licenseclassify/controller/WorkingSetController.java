@@ -2,7 +2,6 @@ package com.gytni.licenseclassify.controller;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;

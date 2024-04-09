@@ -11,8 +11,6 @@ import java.util.stream.Collectors;
 
 import org.checkerframework.checker.index.qual.Positive;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -29,7 +27,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.gytni.licenseclassify.Type.LicenseType;
 import com.gytni.licenseclassify.model.PageDto;
-import com.gytni.licenseclassify.model.PageInfo;
 import com.gytni.licenseclassify.model.ProductPattern;
 import com.gytni.licenseclassify.repo.ProductPatternRepo;
 import com.gytni.licenseclassify.repo.WorkingSetRepo;
@@ -53,17 +50,18 @@ public class ProductController {
     private String[] headerRecord = {"ProductName", "Publisher", "exceptionType", "FastText", "Llm", "LicenseType", "Evidences"};
     
     @GetMapping("")
-    private ResponseEntity<List<ProductPattern>> getProductPatterns(@RequestParam(required = false) Boolean unclassified) {
-        List<ProductPattern> pps = new ArrayList<>();
+    private ResponseEntity<PageDto<ProductPattern>> getProductPatterns(@RequestParam(required = false) Boolean unclassified,
+                                                                        @RequestParam(required = false, defaultValue = "1")  @Positive int page,
+                                                                        @RequestParam(required = false, defaultValue = "100") @Positive int size) {
         
-        if (unclassified != null) {
-            PageRequest pageRequest = PageRequest.of(0, 100, Sort.by("created").ascending().and(Sort.by("patterns").ascending()));
-            pps = productPatternRepo.findByUnclassified(unclassified, pageRequest).getContent();
-        }
+        List<ProductPattern> pps = new ArrayList<>();
+        if (unclassified != null) 
+            pps = productPatternRepo.findByUnclassified(unclassified);
         else 
             productPatternRepo.findAll().forEach(pps::add);
 
-        return (pps.isEmpty()) ? ResponseEntity.noContent().build() : ResponseEntity.ok(pps);
+        PageDto<ProductPattern> pageDto = productPatternService.convertToPageDto(pps, page, size);
+        return (pageDto == null) ? ResponseEntity.noContent().build() : new ResponseEntity<>(pageDto, HttpStatus.OK);
     }
 
     @PostMapping("")
@@ -111,8 +109,6 @@ public class ProductController {
         @RequestParam(required = false, defaultValue = "false") boolean reviewNeeded,
         @RequestParam(required = false, defaultValue = "false") boolean isException) {
         
-        PageRequest pageRequest = PageRequest.of(page - 1, size, Sort.by("patterns").ascending());
-        
         List<ProductPattern> filteredPatterns = classified ? productPatternRepo.findByWorkingSetIdAndUnclassifiedFalse(id) : productPatternRepo.findByWorkingSetIdOrderByCreatedDesc(id);
         
         if (reviewNeeded) {
@@ -128,21 +124,8 @@ public class ProductController {
         }
     
         filteredPatterns.sort(Comparator.comparing(ProductPattern::getPatterns)); 
-        
-        int start = Math.min((int) pageRequest.getOffset(), filteredPatterns.size());
-        int end = Math.min((start + pageRequest.getPageSize()), filteredPatterns.size());
-        List<ProductPattern> pageContent = filteredPatterns.subList(start, end);
-    
-        PageInfo pageInfo = new PageInfo(
-            page - 1, 
-            size,
-            filteredPatterns.size(),
-            (int) Math.ceil((double) filteredPatterns.size() / size),
-            page == 1, 
-            page == (int) Math.ceil((double) filteredPatterns.size() / size) 
-        );
-    
-        PageDto<ProductPattern> pageDto = new PageDto<>(pageContent, pageInfo);
+
+        PageDto<ProductPattern> pageDto = productPatternService.convertToPageDto(filteredPatterns, page, size);
         return new ResponseEntity<>(pageDto, HttpStatus.OK);
     }    
     

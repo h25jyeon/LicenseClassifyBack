@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -13,6 +15,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gytni.licenseclassify.Type.LicenseType;
 import com.gytni.licenseclassify.model.CSVUploadPattern;
+import com.gytni.licenseclassify.model.PageDto;
+import com.gytni.licenseclassify.model.PageInfo;
 import com.gytni.licenseclassify.model.ProductPattern;
 import com.gytni.licenseclassify.model.WorkingSet;
 import com.gytni.licenseclassify.repo.ProductPatternRepo;
@@ -94,5 +98,25 @@ public class ProductPatternService {
             }
         }
         return pp;
+    }
+
+    public PageDto<ProductPattern> convertToPageDto(List<ProductPattern> productPatterns, int page, int size) {
+        
+        PageRequest pageRequest = PageRequest.of(page - 1, size, Sort.by("created").ascending().and(Sort.by("patterns").ascending()));
+
+        int start = Math.min((int) pageRequest.getOffset(), productPatterns.size());
+        int end = Math.min((start + pageRequest.getPageSize()), productPatterns.size());
+        List<ProductPattern> pageContent = productPatterns.subList(start, end);
+    
+        PageInfo pageInfo = new PageInfo(
+            page, 
+            size,
+            productPatterns.size(),
+            (int) Math.ceil((double) productPatterns.size() / size),
+            page == 1, 
+            page == (int) Math.ceil((double) productPatterns.size() / size) 
+        );
+    
+        return new PageDto<>(pageContent, pageInfo);
     }
 }

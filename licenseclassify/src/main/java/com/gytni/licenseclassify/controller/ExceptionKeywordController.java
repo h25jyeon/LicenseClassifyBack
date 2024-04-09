@@ -53,8 +53,8 @@ public class ExceptionKeywordController {
         try (InputStreamReader reader = workingSetService.getEncodedReader(file)) {
             if (reader == null) throw new IOException("Failed to create InputStreamReader for the file");
             
-            List<CSVUploadPattern> keywords = new CsvToBeanBuilder<CSVUploadPattern>(reader)
-                    .withType(CSVUploadPattern.class).build().parse();
+            List<CSVUploadPattern> keywords = new CsvToBeanBuilder<CSVUploadPattern>(reader).withType(CSVUploadPattern.class).build().parse();
+            
             log.info("keyword num : {} \n exception type : {}", keywords.size(), type);
             
             for (CSVUploadPattern keyword : keywords) {
