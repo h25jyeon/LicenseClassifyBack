@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
@@ -21,6 +22,7 @@ import com.gytni.licenseclassify.model.ProductPattern;
 import com.gytni.licenseclassify.model.WorkingSet;
 import com.gytni.licenseclassify.repo.ProductPatternRepo;
 
+import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -118,5 +120,10 @@ public class ProductPatternService {
         );
     
         return new PageDto<>(pageContent, pageInfo);
+    }
+
+    @Transactional
+    public void deleteByWorkingSetId(UUID workingSetId) {
+        productPatternRepo.deleteByWorkingSetId(workingSetId);
     }
 }
