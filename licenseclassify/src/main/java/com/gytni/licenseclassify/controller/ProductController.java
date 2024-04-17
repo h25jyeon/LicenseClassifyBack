@@ -70,8 +70,6 @@ public class ProductController {
         
         ProductPattern pp = productPatternService.getProductPatternFromRepo(data);
         if (pp != null) {
-            pp.setExceptions(data.isExceptions());   
-            pp.setFastText(data.getFastText());
             pp.setLlm(data.getLlm());
             pp.setEvidences(data.getEvidences());
             pp.setUnclassified(false);
@@ -109,7 +107,8 @@ public class ProductController {
         @RequestParam(required = false, defaultValue = "false") boolean reviewNeeded,
         @RequestParam(required = false, defaultValue = "false") boolean isException) {
         
-        List<ProductPattern> filteredPatterns = classified ? productPatternRepo.findByWorkingSetIdAndUnclassifiedFalse(id) : productPatternRepo.findByWorkingSetIdOrderByCreatedDesc(id);
+        List<ProductPattern> filteredPatterns = classified ? productPatternRepo.findByWorkingSetIdAndUnclassifiedFalse(id) : 
+                                                             productPatternRepo.findByWorkingSetIdOrderByCreatedDesc(id);
         
         if (reviewNeeded) {
             filteredPatterns = filteredPatterns.stream()
@@ -161,7 +160,7 @@ public class ProductController {
 
                 HttpHeaders headers = new HttpHeaders();
                 headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
-                headers.setContentDispositionFormData("attachment", "example.csv");
+                headers.setContentDispositionFormData("attachment", "Data.csv");
                 headers.setContentLength(csvByte.length);
 
                 return new ResponseEntity<>(csvByte, headers, HttpStatus.OK);
