@@ -8,8 +8,10 @@ import java.util.UUID;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -94,4 +96,23 @@ public class WorkingSetController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
+
+    @DeleteMapping("")
+    private ResponseEntity<String> deleteWorkingSet(@RequestParam("workingSetId") UUID id) {
+        log.info("Delete request received for workingSetId: {}", id);
+
+        try {
+            productPatternService.deleteByWorkingSetId(id);
+            workingSetRepo.deleteById(id);
+            return ResponseEntity.ok("Working set with ID " + id + " has been successfully deleted.");
+        } catch (EmptyResultDataAccessException e) {
+            log.warn("Working set with ID {} not found for deletion.", id);
+            return ResponseEntity.notFound().build(); 
+        } catch (Exception e) {
+            log.error("Failed to delete working set with ID {}.", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to delete working set.");
+        }
+    }
+
+
 }
