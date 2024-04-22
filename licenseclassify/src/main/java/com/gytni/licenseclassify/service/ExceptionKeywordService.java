@@ -20,23 +20,32 @@ public class ExceptionKeywordService {
         return exceptionKeywordRepo.findByTypeAndProductAndPublisher(type,productName,publisher).size() > 0 ? true : false;
     }
 
-    public String checkIsException(CSVUploadPattern productPattern) {
+    public ExceptionKeyword checkIsException(CSVUploadPattern productPattern) {
         String productName = productPattern.getProductName();
         String publisher = productPattern.getPublisher();
         
         List<ExceptionKeyword> exactMatchKeywords = exceptionKeywordRepo.findByTypeAndProductAndPublisher(ExceptionType.PUBLISHER_PRODUCT_EXACT_MATCH, productName, publisher);
-        if (!exactMatchKeywords.isEmpty())          return ExceptionType.PUBLISHER_PRODUCT_EXACT_MATCH.getLabel();
-
+        if (!exactMatchKeywords.isEmpty()) {
+            return exactMatchKeywords.get(0); 
+        }
+    
         List<ExceptionKeyword> publisherExactMatchKeywords = exceptionKeywordRepo.findByTypeAndPublisher(ExceptionType.PUBLISHER_EXACT_MATCH, publisher);
-        if (!publisherExactMatchKeywords.isEmpty()) return ExceptionType.PUBLISHER_EXACT_MATCH.getLabel();
-
+        if (!publisherExactMatchKeywords.isEmpty()) {
+            return publisherExactMatchKeywords.get(0);
+        }
+    
         List<ExceptionKeyword> publisherMatchKeywords = exceptionKeywordRepo.findByTypeAndSearchTermContainingPublisher(publisher, ExceptionType.PUBLISHER_MATCH);
-        if (!publisherMatchKeywords.isEmpty())      return ExceptionType.PUBLISHER_MATCH.getLabel();
-
+        if (!publisherMatchKeywords.isEmpty()) {
+            return publisherMatchKeywords.get(0);
+        }
+    
         List<ExceptionKeyword> productMatchKeywords = exceptionKeywordRepo.findByTypeAndSearchTermContainingProduct(productName, ExceptionType.PRODUCT_MATCH);
-        if (!productMatchKeywords.isEmpty())        return ExceptionType.PRODUCT_MATCH.getLabel();
+        if (!productMatchKeywords.isEmpty()) {
+            return productMatchKeywords.get(0);
+        }
 
-        return ExceptionType.ETC.getLabel();
+        return null;
     }
+    
 
 }

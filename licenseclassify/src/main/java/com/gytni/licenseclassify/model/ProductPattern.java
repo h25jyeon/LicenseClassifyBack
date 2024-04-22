@@ -17,6 +17,8 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import lombok.Data;
 
 @Data
@@ -54,6 +56,11 @@ public class ProductPattern {
     @JdbcTypeCode(SqlTypes.VARCHAR)
     private UUID workingSetId;
 
+    @ManyToOne(optional = true)
+    @JoinColumn(name = "exception_keyword_id")
+    private ExceptionKeyword exceptionKeyword;
+
+
     @CreationTimestamp
     private LocalDateTime created;
     
@@ -61,8 +68,5 @@ public class ProductPattern {
     private LocalDateTime modified;
 
     private boolean unclassified = true;
-
-    @Column(length = 1)
-    private String exceptionType;
 }
 

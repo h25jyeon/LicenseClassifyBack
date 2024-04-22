@@ -144,6 +144,34 @@ databaseChangeLog:
             columnName: ignored
             newDataType: integer
             tableName: working_set
+  - changeSet:
+      id: 7.remove_exception_type_column_from_product_pattern
+      author: JY
+      changes:
+        - dropColumn:
+            tableName: Product_Pattern
+            columnName: exception_type
+  - changeSet:
+      id: 8.add_exception_keyword_id_to_product_pattern
+      author: JY
+      changes:
+        - addColumn:
+            tableName: Product_Pattern
+            columns:
+              - column:
+                  name: exception_keyword_id
+                  type: char(36)
+  - changeSet:
+      id: 9.add_foreign_key_to_product_pattern
+      author: JY
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: Product_Pattern
+            baseColumnNames: exception_keyword_id
+            constraintName: fk_product_pattern_exception_keyword
+            referencedTableName: exception_keyword
+            referencedColumnNames: id
+
 
               
 

@@ -36,4 +36,17 @@ public class ExceptionKeyword {
     @Column(length = 50)
     @Enumerated(EnumType.STRING)
     private ExceptionType type;
+
+    @Override
+    public String toString() {
+        String label = type.getLabel();
+        if (publisher != null && product != null ) 
+            return String.format("%s(%s / %s)", label, publisher, product);
+        else if (publisher != null)
+            return String.format("%s(%s)", label, publisher);
+        else if (product != null)
+            return String.format("%s(%s)", label, product);
+        else
+            return label;
+    }
 }

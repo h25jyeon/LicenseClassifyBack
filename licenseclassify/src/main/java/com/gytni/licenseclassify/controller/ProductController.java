@@ -87,7 +87,7 @@ public class ProductController {
 
         ProductPattern pp = productPatternService.getProductPatternFromRepo(data);
         if (pp != null) {
-            pp.setExceptionType(data.getExceptionType());
+            pp.setExceptionKeyword(data.getExceptionKeyword());
             pp.setExceptions(data.isExceptions());   
             if (data.isExceptions()) pp.setUnclassified(false);
             productPatternRepo.save(pp);
