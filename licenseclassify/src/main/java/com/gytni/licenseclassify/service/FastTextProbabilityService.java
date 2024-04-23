@@ -17,10 +17,7 @@ public class FastTextProbabilityService {
     private FastText productModel;
     private FastText publisherModel;
 
-    // @Value("${app.ai.product.path}")
     private String productModelPath = "C:\\DEV\\fasttext_models\\0110_appwiz_model.fasttext";
-
-    // @Value("${app.ai.publisher.path}")
     private String publisherModelPath = "C:\\DEV\\fasttext_models\\0110_publisher_model_2.fasttext";
 
     @PostConstruct
