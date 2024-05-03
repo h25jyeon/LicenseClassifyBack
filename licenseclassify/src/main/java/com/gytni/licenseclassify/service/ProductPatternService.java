@@ -1,6 +1,8 @@
 package com.gytni.licenseclassify.service;
 
 import java.io.IOException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -16,8 +18,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gytni.licenseclassify.Type.LicenseType;
 import com.gytni.licenseclassify.model.CSVUploadPattern;
-import com.gytni.licenseclassify.model.ExceptionKeyword;
-import com.gytni.licenseclassify.model.PageDto;
+import com.gytni.licenseclassify.dto.ProductPatternDto;
 import com.gytni.licenseclassify.model.PageInfo;
 import com.gytni.licenseclassify.model.ProductPattern;
 import com.gytni.licenseclassify.model.WorkingSet;
@@ -43,10 +44,12 @@ public class ProductPatternService {
     private ObjectMapper objectMapper = new ObjectMapper();
 
     public void saveProductPattern(List<CSVUploadPattern> patterns, WorkingSet ws) {
-        
+        log.info("Staring to save product patterns. Number of patterns to save {}", patterns.size());
+        Instant start = Instant.now();
+
         int addNum = 0; 
         int ignoreNum = 0;
-
+        List<ProductPattern> ppList = new ArrayList<>();
         try {
             for (CSVUploadPattern pattern : patterns) {
                 if (pattern.getProductName() != null && pattern.getPublisher() != null) {
@@ -54,18 +57,24 @@ public class ProductPatternService {
                     String ft = fastTextProbabilityService.probability(pattern);
                     pp.setFastText(LicenseType.find(ft));
                     pp.setPatterns(jsonMapper.writeValueAsString(pattern));
-                    ExceptionKeyword et = exceptionKeywordService.checkIsException(pattern);
-                    pp.setExceptionKeyword(et);
+                    UUID et = exceptionKeywordService.checkIsException(pattern);
+                    pp.setExceptionKeyword(exceptionKeywordService.getExceptionKeywordById(et));
                     pp.setExceptions(et != null);
                     pp.setUnclassified(!pp.isExceptions());
                     pp.setWorkingSetId(ws.getId());
-                    productPatternRepo.save(pp);
                     addNum++;
+                    ppList.add(pp);
                 } else 
                     ignoreNum++;
             }
             ws.setAdded(addNum);
             ws.setIgnored(ignoreNum);
+            
+            log.info("All patterns are processed. Total patters: {}, workingSet: {}",ppList.size(), ws);
+            productPatternRepo.saveAll(ppList);
+            Instant end = Instant.now();
+            long duration = Duration.between(start, end).toMillis();
+            log.info("Saving product patters completed. Time taken: {}ms", duration);
         } catch (JsonProcessingException e) {
             log.error("Failed to map pattern to JSON. {}", e);
         }
@@ -76,7 +85,7 @@ public class ProductPatternService {
         List<String> data = new ArrayList<>();
         try {
             JsonNode pNode = objectMapper.readTree((pp.getPatterns() != null) ? pp.getPatterns() : "");
-            JsonNode eviNode = objectMapper.readTree((pp.getEvidences() != null) ? pp.getEvidences() : "");
+            JsonNode eviNode = objectMapper.readTree((pp.getEvidences() != null) ? pp.getEvidences().toString() : "");
             data.add(pNode.path("productName").asText()); 
             data.add(pNode.path("publisher").asText());
             data.add(pp.getExceptionKeyword() != null ? pp.getExceptionKeyword().toString() : "");
@@ -103,7 +112,7 @@ public class ProductPatternService {
         return pp;
     }
 
-    public PageDto<ProductPattern> convertToPageDto(List<ProductPattern> productPatterns, int page, int size) {
+    public ProductPatternDto<ProductPattern> convertToPageDto(List<ProductPattern> productPatterns, int page, int size) {
         
         PageRequest pageRequest = PageRequest.of(page - 1, size, Sort.by("created").ascending().and(Sort.by("patterns").ascending()));
 
@@ -120,7 +129,7 @@ public class ProductPatternService {
             page == (int) Math.ceil((double) productPatterns.size() / size) 
         );
     
-        return new PageDto<>(pageContent, pageInfo);
+        return new ProductPatternDto<>(pageContent, pageInfo);
     }
 
     @Transactional

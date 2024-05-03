@@ -35,7 +35,7 @@ public class WorkingSetService {
             String charset = cm.getName();
             return (charset.equalsIgnoreCase("UTF-8"))
                     ? new InputStreamReader(new BOMInputStream(file.getInputStream()), StandardCharsets.UTF_8)
-                    : new InputStreamReader(file.getInputStream(), charset);
+                    : new InputStreamReader(file.getInputStream(), "EUC-KR");
             
         } catch (IOException e) {
             log.error("file charset detector fail {}", e);

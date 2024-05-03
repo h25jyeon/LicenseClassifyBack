@@ -1,6 +1,7 @@
 package com.gytni.licenseclassify.model;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 import org.hibernate.annotations.CreationTimestamp;
@@ -10,8 +11,10 @@ import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
 
 import com.gytni.licenseclassify.Type.LicenseType;
+import com.gytni.licenseclassify.converter.EvidenceConverter;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -43,7 +46,8 @@ public class ProductPattern {
     @Enumerated(EnumType.STRING)
     private LicenseType llm;
 
-    private String evidences;
+    @Convert(converter = EvidenceConverter.class)
+    private List<Evidence> evidences;
 
     private String patterns;
 

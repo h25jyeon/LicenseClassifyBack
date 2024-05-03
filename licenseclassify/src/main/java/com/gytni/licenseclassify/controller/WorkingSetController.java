@@ -21,6 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.gytni.licenseclassify.model.CSVUploadPattern;
 import com.gytni.licenseclassify.model.WorkingSet;
+import com.gytni.licenseclassify.repo.ProductPatternRepo;
 import com.gytni.licenseclassify.repo.WorkingSetRepo;
 import com.gytni.licenseclassify.service.ProductPatternService;
 import com.gytni.licenseclassify.service.WorkingSetService;
@@ -32,47 +33,60 @@ import com.opencsv.bean.CsvToBeanBuilder;
 
 import lombok.extern.slf4j.Slf4j;
 
-
 @Slf4j
 @RestController
-@RequestMapping("/working-set")    
+@RequestMapping("/working-set")
 public class WorkingSetController {
     @Autowired
     private WorkingSetRepo workingSetRepo;
-    
+
     @Autowired
     private WorkingSetService workingSetService;
 
     @Autowired
     private ProductPatternService productPatternService;
 
+    @Autowired
+    private ProductPatternRepo productPatternRepo;
+
     @GetMapping("")
-    private ResponseEntity<List<WorkingSet>> getMethodName() {
+    private ResponseEntity<List<WorkingSet>> getAllWorkingSet() {
+        log.info("get WorkingSet 요청 ");
+
         Iterable<WorkingSet> wsIter = workingSetRepo.findAll();
         List<WorkingSet> wss = new ArrayList<>();
         wsIter.forEach(wss::add);
-        
         if (wss.isEmpty())
-            return ResponseEntity.noContent().build();
-        else{
-            for (WorkingSet ws : wss) 
-                ws.setName( (int)(workingSetService.getClassifyPerc(ws.getId()) * 100) + "%\t" + ws.getName());
+        return ResponseEntity.noContent().build();
+        else {
+            for (WorkingSet ws : wss) {
+                int totalSize = productPatternRepo.findByWorkingSetId(ws.getId()).size();
+                int classifiedSize = productPatternRepo.findByWorkingSetIdAndUnclassifiedFalse(ws.getId()).size();
+                double classifyPercentage = workingSetService.getClassifyPerc(ws.getId()) * 100;
+
+                String updatedName = String.format("%.0f%%\t%s\t(%d/%d)", classifyPercentage, ws.getName(), classifiedSize, totalSize);
+                ws.setName(updatedName);
+            }
             return ResponseEntity.ok(wss);
         }
     }
 
     @PostMapping("")
-    private ResponseEntity<WorkingSet> saveWorkingSet(@RequestParam("file") MultipartFile file, @RequestParam("fileName") String fileName) {
+    private ResponseEntity<WorkingSet> saveWorkingSet(@RequestParam("file") MultipartFile file,
+            @RequestParam("fileName") String fileName) {
         log.info("saveWorkingSet 호출");
-        if (file.isEmpty()) return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        if (file.isEmpty())
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
 
         try (InputStreamReader reader = workingSetService.getEncodedReader(file)) {
-            if (reader == null) throw new IOException("Failed to create InputStreamReader for the file.");
-            
+            if (reader == null)
+                throw new IOException("Failed to create InputStreamReader for the file.");
+
             String fileContentHash = DigestUtils.md5Hex(file.getInputStream());
             UUID existingId = workingSetRepo.findIdByHash(fileContentHash);
-            
-            if (existingId != null) return ResponseEntity.ok(workingSetRepo.findById(existingId).get());
+
+            if (existingId != null)
+                return ResponseEntity.ok(workingSetRepo.findById(existingId).get());
             else {
                 WorkingSet ws = new WorkingSet();
                 ws.setName(fileName);
@@ -80,10 +94,12 @@ public class WorkingSetController {
                 ws = workingSetRepo.save(ws);
 
                 RFC4180Parser rfc4180ParserForCsvToBean = new RFC4180ParserBuilder().build();
-                CSVReaderBuilder csvReaderBuilderForCsvToBean = new CSVReaderBuilder(reader).withCSVParser(rfc4180ParserForCsvToBean);
+                CSVReaderBuilder csvReaderBuilderForCsvToBean = new CSVReaderBuilder(reader)
+                        .withCSVParser(rfc4180ParserForCsvToBean);
 
                 try (CSVReader csvReaderForCsvToBean = csvReaderBuilderForCsvToBean.build()) {
-                    List<CSVUploadPattern> parsedData = new CsvToBeanBuilder<CSVUploadPattern>(csvReaderForCsvToBean).withType(CSVUploadPattern.class).build().parse();
+                    List<CSVUploadPattern> parsedData = new CsvToBeanBuilder<CSVUploadPattern>(csvReaderForCsvToBean)
+                            .withType(CSVUploadPattern.class).build().parse();
                     productPatternService.saveProductPattern(parsedData, ws);
                 }
 
@@ -91,8 +107,10 @@ public class WorkingSetController {
                 return ResponseEntity.ok(ws);
             }
         } catch (IOException e) {
+            log.error("Fail to save working set : file={}", file, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         } catch (Exception e) {
+            log.error("Fail to save working set : file={}", file, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -107,12 +125,11 @@ public class WorkingSetController {
             return ResponseEntity.ok("Working set with ID " + id + " has been successfully deleted.");
         } catch (EmptyResultDataAccessException e) {
             log.warn("Working set with ID {} not found for deletion.", id);
-            return ResponseEntity.notFound().build(); 
+            return ResponseEntity.notFound().build();
         } catch (Exception e) {
             log.error("Failed to delete working set with ID {}.", id, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to delete working set.");
         }
     }
-
 
 }

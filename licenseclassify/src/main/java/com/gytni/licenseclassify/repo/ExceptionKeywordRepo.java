@@ -11,6 +11,8 @@ import com.gytni.licenseclassify.model.ExceptionKeyword;
 
 public interface ExceptionKeywordRepo extends CrudRepository<ExceptionKeyword, UUID> {
     
+    List<ExceptionKeyword> findByType(ExceptionType type);
+    
     List<ExceptionKeyword> findByPublisher(String publisher);
 
     List<ExceptionKeyword> findByProduct(String product);
@@ -25,5 +27,8 @@ public interface ExceptionKeywordRepo extends CrudRepository<ExceptionKeyword, U
 
     @Query("SELECT ek FROM ExceptionKeyword ek WHERE  ek.type = :type AND :searchTerm LIKE CONCAT('%', ek.product, '%')")
     List<ExceptionKeyword> findByTypeAndSearchTermContainingProduct(String searchTerm, ExceptionType type);
+
+    /* List<ExceptionKeyword> findByTypeAndSearchTermContainingProductOrTypeAndSearchTermContainingPublisher(
+            String productName, ExceptionType productMatch, String publisher, ExceptionType publisherMatch); */
 
 }

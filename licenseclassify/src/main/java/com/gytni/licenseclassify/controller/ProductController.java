@@ -2,7 +2,6 @@ package com.gytni.licenseclassify.controller;
 
 import java.io.IOException;
 import java.io.StringWriter;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -11,6 +10,10 @@ import java.util.stream.Collectors;
 
 import org.checkerframework.checker.index.qual.Positive;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Sort.Order;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -26,7 +29,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.gytni.licenseclassify.Type.LicenseType;
-import com.gytni.licenseclassify.model.PageDto;
+import com.gytni.licenseclassify.dto.ProductPatternDto;
 import com.gytni.licenseclassify.model.ProductPattern;
 import com.gytni.licenseclassify.repo.ProductPatternRepo;
 import com.gytni.licenseclassify.repo.WorkingSetRepo;
@@ -50,31 +53,42 @@ public class ProductController {
     private String[] headerRecord = {"ProductName", "Publisher", "exceptionType", "FastText", "Llm", "LicenseType", "Evidences"};
     
     @GetMapping("")
-    private ResponseEntity<PageDto<ProductPattern>> getProductPatterns(@RequestParam(required = false) Boolean unclassified,
-                                                                        @RequestParam(required = false, defaultValue = "1")  @Positive int page,
-                                                                        @RequestParam(required = false, defaultValue = "100") @Positive int size) {
+    private ResponseEntity<Page<ProductPattern>> getProductPatterns(@RequestParam(required = false) Boolean unclassified,
+                                                                    @RequestParam(required = false) UUID workingSetId,
+                                                                    @RequestParam(required = false, defaultValue = "1") @Positive int page,
+                                                                    @RequestParam(required = false, defaultValue = "100") @Positive int size) {
         
-        List<ProductPattern> pps = new ArrayList<>();
-        if (unclassified != null) 
-            pps = productPatternRepo.findByUnclassified(unclassified);
-        else 
-            productPatternRepo.findAll().forEach(pps::add);
-
-        PageDto<ProductPattern> pageDto = productPatternService.convertToPageDto(pps, page, size);
-        return (pageDto == null) ? ResponseEntity.noContent().build() : new ResponseEntity<>(pageDto, HttpStatus.OK);
+        log.info("Get product patterns request received. page : {} size : {}", page, size);
+        PageRequest pageable = PageRequest.of(page - 1, size, Sort.by(Order.asc("created")));
+    
+        if (unclassified != null && workingSetId != null) {
+            log.info("Fetching product patterns that are unclassified: {} and belong to working set ID: {}", unclassified, workingSetId);
+            return ResponseEntity.ok(productPatternRepo.findByUnclassifiedAndWorkingSetId(unclassified, workingSetId, pageable));
+        } else if (unclassified != null) {
+            log.info("Fetching product patterns that are unclassified: {}", unclassified);
+            return ResponseEntity.ok(productPatternRepo.findByUnclassified(unclassified, pageable));
+        } else if (workingSetId != null) {
+            log.info("Fetching product patterns that belong to working set ID: {}", workingSetId);
+            return ResponseEntity.ok(productPatternRepo.findByWorkingSetId(workingSetId, pageable));
+        } else {
+            log.info("Fetching all product patterns.");
+            return ResponseEntity.ok(productPatternRepo.findAll(pageable));
+        }
     }
+    
 
     @PostMapping("")
     private ResponseEntity<String> updateLicenseTypeByAi(@RequestBody ProductPattern data) {
-        log.info("updateLicenseTypeByAi Strart : {} ", data);
+        log.info("updateLicenseTypeByAi Strart : {} ", data.getId());
         
         ProductPattern pp = productPatternService.getProductPatternFromRepo(data);
         if (pp != null) {
+            log.info("llm : {}, evidence len : {}", data.getLlm(), (data.getEvidences() != null) ? data.getEvidences().toString().length() : 0);
             pp.setLlm(data.getLlm());
             pp.setEvidences(data.getEvidences());
             pp.setUnclassified(false);
             productPatternRepo.save(pp);
-            log.info("updateLicenseTypeByAi 성공 : {}", pp.toString());
+            log.info("updateLicenseTypeByAi 성공 : id : {}, llm : {}", pp.getId(), pp.getLlm());
             return ResponseEntity.ok("success");
         }
         log.error("updateLicenseTypeByAi 실패");
@@ -99,7 +113,7 @@ public class ProductController {
     }
 
     @GetMapping("/{id}")
-    private ResponseEntity<PageDto<ProductPattern>> GetProductPatternByWsId(
+    private ResponseEntity<ProductPatternDto<ProductPattern>> GetProductPatternByWsId(
         @PathVariable UUID id, 
         @Positive @RequestParam int page, 
         @Positive @RequestParam int size,
@@ -124,7 +138,7 @@ public class ProductController {
     
         filteredPatterns.sort(Comparator.comparing(ProductPattern::getPatterns)); 
 
-        PageDto<ProductPattern> pageDto = productPatternService.convertToPageDto(filteredPatterns, page, size);
+        ProductPatternDto<ProductPattern> pageDto = productPatternService.convertToPageDto(filteredPatterns, page, size);
         return new ResponseEntity<>(pageDto, HttpStatus.OK);
     }    
     
@@ -141,10 +155,29 @@ public class ProductController {
             return ResponseEntity.noContent().build();
     }
 
+    @PutMapping("/score/{id}")
+    private ResponseEntity<ProductPattern> updateEvidenceScore(@PathVariable UUID id, @RequestParam("score") int score, @RequestParam("index") int index) {
+        log.info("Request to update score: score={}, index={}, for ProductPattern ID={}", score, index, id);
+        Optional<ProductPattern> optionalProductPattern = productPatternRepo.findById(id);
+        
+        if (optionalProductPattern.isPresent()) {
+            ProductPattern pp = optionalProductPattern.get();
+            pp.getEvidences().get(index).setScore(score);
+            productPatternRepo.save(pp);
+            log.info("Successfully updated evidence score for ProductPattern ID={}", id);
+            return ResponseEntity.ok(pp);
+        } else {
+            log.warn("Failed to find ProductPattern with ID={}", id);
+            return ResponseEntity.noContent().build();
+        }
+    }
+
     @GetMapping("/download/{id}")
     private ResponseEntity<byte[]> ExportDataByWsId(@PathVariable UUID id) {
         
         List<ProductPattern> pps = productPatternRepo.findByWorkingSetId(id);
+        pps.sort(Comparator.comparing(ProductPattern::getPatterns)); 
+        
         if (!pps.isEmpty()) {
             try (StringWriter sw = new StringWriter(); 
                 CSVWriter writer = new CSVWriter(sw)) {

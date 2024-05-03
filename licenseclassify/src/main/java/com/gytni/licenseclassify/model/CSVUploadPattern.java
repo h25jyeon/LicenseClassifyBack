@@ -13,4 +13,7 @@ public class CSVUploadPattern {
 
     @CsvBindByName(column = "저작권사")
     private String publisher;
+
+    @CsvBindByName(column = "수집량")
+    private int collectedCount;
 }

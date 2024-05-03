@@ -1,7 +1,7 @@
 package com.gytni.licenseclassify.Type;
 
 public enum LicenseType {
-    FREE("free"), SHAREWARE("shareware"), COMMERCIAL("commercial"), ETC("etc"), NONE("none");
+    FREE("free"), SHAREWARE("shareware"), COMMERCIAL("commercial"), ETC("etc"), EXCEPTION("exception"), NONE("none");
 
     private String text;
 
