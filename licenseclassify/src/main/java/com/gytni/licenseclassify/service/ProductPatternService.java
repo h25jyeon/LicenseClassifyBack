@@ -17,8 +17,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gytni.licenseclassify.Type.LicenseType;
-import com.gytni.licenseclassify.model.CSVUploadPattern;
 import com.gytni.licenseclassify.dto.ProductPatternDto;
+import com.gytni.licenseclassify.model.CSVUploadPattern;
 import com.gytni.licenseclassify.model.PageInfo;
 import com.gytni.licenseclassify.model.ProductPattern;
 import com.gytni.licenseclassify.model.WorkingSet;
@@ -40,12 +40,10 @@ public class ProductPatternService {
     @Autowired
     private ExceptionKeywordService exceptionKeywordService;
 
-    private ObjectMapper jsonMapper = new ObjectMapper();
-    private ObjectMapper objectMapper = new ObjectMapper();
-
     public void saveProductPattern(List<CSVUploadPattern> patterns, WorkingSet ws) {
         log.info("Staring to save product patterns. Number of patterns to save {}", patterns.size());
         Instant start = Instant.now();
+        ObjectMapper jsonMapper = new ObjectMapper();
 
         int addNum = 0; 
         int ignoreNum = 0;
@@ -83,16 +81,16 @@ public class ProductPatternService {
     public List<String> convertToCsvFormat(ProductPattern pp) {
         
         List<String> data = new ArrayList<>();
+        ObjectMapper objectMapper = new ObjectMapper();
         try {
             JsonNode pNode = objectMapper.readTree((pp.getPatterns() != null) ? pp.getPatterns() : "");
-            JsonNode eviNode = objectMapper.readTree((pp.getEvidences() != null) ? pp.getEvidences().toString() : "");
             data.add(pNode.path("productName").asText()); 
             data.add(pNode.path("publisher").asText());
             data.add(pp.getExceptionKeyword() != null ? pp.getExceptionKeyword().toString() : "");
             data.add((pp.getFastText() != null) ? pp.getFastText().toString() : "");
             data.add((pp.getLlm() != null) ? pp.getLlm().toString() : "");
             data.add((pp.getLicenseType() != null) ? pp.getLicenseType().toString() : "");
-            eviNode.forEach(node -> data.add(node.path("url").asText()));
+            if(pp.getEvidences() != null) pp.getEvidences().forEach(it -> data.add(it.getUrl()));
 
         } catch (IOException e) {
             log.error("Failed to parse JSON data for ProductPattern. Error message: {}", e.getMessage());
@@ -110,6 +108,20 @@ public class ProductPatternService {
             }
         }
         return pp;
+    }
+
+    public boolean isKeywordPresent(ProductPattern data, String keyword) {
+        
+        ObjectMapper mapper = new ObjectMapper();
+        keyword = keyword.toLowerCase();
+        try {
+            CSVUploadPattern pattern = mapper.readValue(data.getPatterns(), CSVUploadPattern.class);
+            return (pattern.getProductName().toLowerCase().contains(keyword) || pattern.getPublisher().toLowerCase().contains(keyword)) 
+                    ? true : false;
+        } catch (JsonProcessingException e) {
+            log.error("Error processing JSON while checking keyword: {}", keyword, e);
+        }
+        return false;
     }
 
     public ProductPatternDto<ProductPattern> convertToPageDto(List<ProductPattern> productPatterns, int page, int size) {
