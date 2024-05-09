@@ -36,6 +36,7 @@ import com.gytni.licenseclassify.repo.WorkingSetRepo;
 import com.gytni.licenseclassify.service.ProductPatternService;
 import com.opencsv.CSVWriter;
 
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -56,8 +57,14 @@ public class ProductController {
     private ResponseEntity<Page<ProductPattern>> getProductPatterns(@RequestParam(required = false) Boolean unclassified,
                                                                     @RequestParam(required = false) UUID workingSetId,
                                                                     @RequestParam(required = false, defaultValue = "1") @Positive int page,
-                                                                    @RequestParam(required = false, defaultValue = "100") @Positive int size) {
+                                                                    @RequestParam(required = false, defaultValue = "100") @Positive int size, 
+                                                                    HttpServletRequest request) {
         
+        String clientIp = request.getHeader("X-Forwarded-For");
+        if (clientIp == null) clientIp = request.getRemoteAddr();
+        log.info("Request from IP : {}", clientIp);
+
+
         log.info("Get product patterns request received. page : {} size : {}", page, size);
         PageRequest pageable = PageRequest.of(page - 1, size, Sort.by(Order.asc("created")));
     
@@ -78,8 +85,11 @@ public class ProductController {
     
 
     @PostMapping("")
-    private ResponseEntity<String> updateLicenseTypeByAi(@RequestBody ProductPattern data) {
-        log.info("updateLicenseTypeByAi Strart : {} ", data.getId());
+    private ResponseEntity<String> updateLicenseTypeByAi(@RequestBody ProductPattern data, HttpServletRequest request) {
+
+        String clientIp = request.getHeader("X-Forwarded-For");
+        if (clientIp == null) clientIp = request.getRemoteAddr();
+        log.info("updateLicenseTypeByAi Strart  ID : {}, IP : {} ", data.getId(), clientIp);
         
         ProductPattern pp = productPatternService.getProductPatternFromRepo(data);
         if (pp != null) {
@@ -96,8 +106,11 @@ public class ProductController {
     }
 
     @PostMapping("/exception")
-    private ResponseEntity<String> updateIsException(@RequestBody ProductPattern data) {
-        log.info("update exception Strart : {} ", data.getId());
+    private ResponseEntity<String> updateIsException(@RequestBody ProductPattern data, HttpServletRequest request) {
+
+        String clientIp = request.getHeader("X-Forwarded-For");
+        if (clientIp == null) clientIp = request.getRemoteAddr();
+        log.info("update exception Strart  ID : {}, IP : {}", data.getId(), clientIp);
 
         ProductPattern pp = productPatternService.getProductPatternFromRepo(data);
         if (pp != null) {
@@ -114,12 +127,18 @@ public class ProductController {
 
     @GetMapping("/{id}")
     private ResponseEntity<ProductPatternDto<ProductPattern>> GetProductPatternByWsId(
-        @PathVariable UUID id, 
+        @PathVariable UUID id,
+        @RequestParam(required = false) String keyword,
         @Positive @RequestParam int page, 
         @Positive @RequestParam int size,
         @RequestParam(required = false, defaultValue = "false") boolean classified,
         @RequestParam(required = false, defaultValue = "false") boolean reviewNeeded,
-        @RequestParam(required = false, defaultValue = "false") boolean isException) {
+        @RequestParam(required = false, defaultValue = "false") boolean isException, 
+        HttpServletRequest request) {
+
+        String clientIp = request.getHeader("X-Forwarded-For");
+        if (clientIp == null) clientIp = request.getRemoteAddr();
+        log.info("ProductPattern Request ID : {}, IP : {}", id, clientIp);
         
         List<ProductPattern> filteredPatterns = classified ? productPatternRepo.findByWorkingSetIdAndUnclassifiedFalse(id) : 
                                                              productPatternRepo.findByWorkingSetIdOrderByCreatedDesc(id);
@@ -135,6 +154,12 @@ public class ProductController {
                 .filter(pattern -> !pattern.isExceptions())
                 .collect(Collectors.toList());
         }
+
+        if (keyword != null) {
+            filteredPatterns = filteredPatterns.stream()
+                .filter(pattern -> productPatternService.isKeywordPresent(pattern, keyword))
+                .collect(Collectors.toList());
+        }
     
         filteredPatterns.sort(Comparator.comparing(ProductPattern::getPatterns)); 
 
@@ -143,7 +168,12 @@ public class ProductController {
     }    
     
     @PutMapping("/{id}")
-    private ResponseEntity<String> updateLicenseType(@PathVariable UUID id, @RequestParam("newOption") String newType ) {
+    private ResponseEntity<String> updateLicenseType(@PathVariable UUID id, @RequestParam("newOption") String newType, HttpServletRequest request) {
+
+        String clientIp = request.getHeader("X-Forwarded-For");
+        if (clientIp == null) clientIp = request.getRemoteAddr();
+        log.info("update exception Strart ID : {}, IP : {}", id, clientIp);
+
         Optional<ProductPattern> opp =  productPatternRepo.findById(id);
         if (opp.isPresent()) {
             ProductPattern pp = opp.get();
@@ -156,8 +186,15 @@ public class ProductController {
     }
 
     @PutMapping("/score/{id}")
-    private ResponseEntity<ProductPattern> updateEvidenceScore(@PathVariable UUID id, @RequestParam("score") int score, @RequestParam("index") int index) {
-        log.info("Request to update score: score={}, index={}, for ProductPattern ID={}", score, index, id);
+    private ResponseEntity<ProductPattern> updateEvidenceScore (@PathVariable UUID id, 
+                                                               @RequestParam("score") int score, 
+                                                               @RequestParam("index") int index, 
+                                                               HttpServletRequest request) {
+
+        String clientIp = request.getHeader("X-Forwarded-For");
+        if (clientIp == null) clientIp = request.getRemoteAddr();
+        log.info("Request to update score: score: {}, index: {}, for ProductPattern ID: {}, IP : {}", score, index, id, clientIp);
+        
         Optional<ProductPattern> optionalProductPattern = productPatternRepo.findById(id);
         
         if (optionalProductPattern.isPresent()) {
@@ -173,7 +210,11 @@ public class ProductController {
     }
 
     @GetMapping("/download/{id}")
-    private ResponseEntity<byte[]> ExportDataByWsId(@PathVariable UUID id) {
+    private ResponseEntity<byte[]> ExportDataByWsId(@PathVariable UUID id, HttpServletRequest request) {
+
+        String clientIp = request.getHeader("X-Forwarded-For");
+        if (clientIp == null) clientIp = request.getRemoteAddr();
+        log.info("download ws ID : {}, IP : {}", id, clientIp);
         
         List<ProductPattern> pps = productPatternRepo.findByWorkingSetId(id);
         pps.sort(Comparator.comparing(ProductPattern::getPatterns)); 
@@ -183,7 +224,6 @@ public class ProductController {
                 CSVWriter writer = new CSVWriter(sw)) {
                 
                 writer.writeNext(headerRecord);
-                
                 pps.stream()
                     .map(productPatternService::convertToCsvFormat)
                     .map(data -> data.toArray(new String[0]))
@@ -206,7 +246,12 @@ public class ProductController {
     }
 
     @DeleteMapping("/{id}")
-    private ResponseEntity<String> deleteProductPatternById(@PathVariable UUID id) {
+    private ResponseEntity<String> deleteProductPatternById(@PathVariable UUID id, HttpServletRequest request) {
+
+        String clientIp = request.getHeader("X-Forwarded-For");
+        if (clientIp == null) clientIp = request.getRemoteAddr();
+        log.info("Delete Request to Product Pattern ID : {}, IP : {}", id, clientIp);
+
         try {
             if (id != null) {
                 UUID wsId = productPatternRepo.findById(id).get().getWorkingSetId();
