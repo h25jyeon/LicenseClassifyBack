@@ -64,7 +64,6 @@ public class ProductPattern {
     @JoinColumn(name = "exception_keyword_id")
     private ExceptionKeyword exceptionKeyword;
 
-
     @CreationTimestamp
     private LocalDateTime created;
     
@@ -72,5 +71,7 @@ public class ProductPattern {
     private LocalDateTime modified;
 
     private boolean unclassified = true;
+
+    private String mdbResults;
 }
 

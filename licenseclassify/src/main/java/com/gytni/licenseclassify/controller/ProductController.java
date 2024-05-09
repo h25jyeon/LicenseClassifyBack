@@ -62,7 +62,7 @@ public class ProductController {
         
         String clientIp = request.getHeader("X-Forwarded-For");
         if (clientIp == null) clientIp = request.getRemoteAddr();
-        log.info("Request from IP : {}", clientIp);
+        log.info("get product patterns Request from IP : {}", clientIp);
 
 
         log.info("Get product patterns request received. page : {} size : {}", page, size);
@@ -94,6 +94,7 @@ public class ProductController {
         ProductPattern pp = productPatternService.getProductPatternFromRepo(data);
         if (pp != null) {
             log.info("llm : {}, evidence len : {}", data.getLlm(), (data.getEvidences() != null) ? data.getEvidences().toString().length() : 0);
+            pp.setMdbResults(data.getMdbResults());
             pp.setLlm(data.getLlm());
             pp.setEvidences(data.getEvidences());
             pp.setUnclassified(false);
@@ -114,6 +115,7 @@ public class ProductController {
 
         ProductPattern pp = productPatternService.getProductPatternFromRepo(data);
         if (pp != null) {
+            pp.setMdbResults(data.getMdbResults());
             pp.setExceptionKeyword(data.getExceptionKeyword());
             pp.setExceptions(data.isExceptions());   
             if (data.isExceptions()) pp.setUnclassified(false);
@@ -122,6 +124,25 @@ public class ProductController {
             return ResponseEntity.ok("success");
         }
         log.error("update exception 실패");
+        return ResponseEntity.noContent().build();
+    }
+
+    
+    @PostMapping("/mdb")
+    private ResponseEntity<ProductPattern> updateMdbResults(@RequestBody ProductPattern data, HttpServletRequest request) {
+
+        String clientIp = request.getHeader("X-Forwarded-For");
+        if (clientIp == null) clientIp = request.getRemoteAddr();
+        log.info("update Mdb Results Strart  ID : {}, IP : {}", data.getId(), clientIp);
+
+        ProductPattern pp = productPatternService.getProductPatternFromRepo(data);
+        if (pp != null) {
+            pp.setMdbResults(data.getMdbResults());
+            productPatternRepo.save(pp);
+            log.info("update Mdb Results 성공 : {}", pp.toString());
+            return ResponseEntity.ok(pp);
+        }
+        log.error("update Mdb Results 실패");
         return ResponseEntity.noContent().build();
     }
 
@@ -138,7 +159,7 @@ public class ProductController {
 
         String clientIp = request.getHeader("X-Forwarded-For");
         if (clientIp == null) clientIp = request.getRemoteAddr();
-        log.info("ProductPattern Request ID : {}, IP : {}", id, clientIp);
+        log.info("ProductPattern Request from ws ID : {}, IP : {}", id, clientIp);
         
         List<ProductPattern> filteredPatterns = classified ? productPatternRepo.findByWorkingSetIdAndUnclassifiedFalse(id) : 
                                                              productPatternRepo.findByWorkingSetIdOrderByCreatedDesc(id);
