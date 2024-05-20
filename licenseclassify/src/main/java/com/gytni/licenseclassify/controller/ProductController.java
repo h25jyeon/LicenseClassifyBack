@@ -29,10 +29,13 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.gytni.licenseclassify.Type.LicenseType;
+import com.gytni.licenseclassify.annotation.RemoteIp;
 import com.gytni.licenseclassify.dto.ProductPatternDto;
 import com.gytni.licenseclassify.model.ProductPattern;
+import com.gytni.licenseclassify.model.WorkingSet;
 import com.gytni.licenseclassify.repo.ProductPatternRepo;
 import com.gytni.licenseclassify.repo.WorkingSetRepo;
+import com.gytni.licenseclassify.repo.searcher.SearchBuilder;
 import com.gytni.licenseclassify.service.ProductPatternService;
 import com.opencsv.CSVWriter;
 
@@ -146,7 +149,16 @@ public class ProductController {
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/{id}")
+    /**
+     * @param id
+     * @param keyword
+     * @param page
+     * @param size
+     * @param classified
+     * @param reviewNeeded
+     * @param isException
+     */
+    /* @GetMapping("/{id}")
     private ResponseEntity<ProductPatternDto<ProductPattern>> GetProductPatternByWsId(
         @PathVariable UUID id,
         @RequestParam(required = false) String keyword,
@@ -155,10 +167,9 @@ public class ProductController {
         @RequestParam(required = false, defaultValue = "false") boolean classified,
         @RequestParam(required = false, defaultValue = "false") boolean reviewNeeded,
         @RequestParam(required = false, defaultValue = "false") boolean isException, 
-        HttpServletRequest request) {
+        HttpServletRequest request,
+        @RemoteIp String clientIp) {
 
-        String clientIp = request.getHeader("X-Forwarded-For");
-        if (clientIp == null) clientIp = request.getRemoteAddr();
         log.info("ProductPattern Request from ws ID : {}, IP : {}", id, clientIp);
         
         List<ProductPattern> filteredPatterns = classified ? productPatternRepo.findByWorkingSetIdAndUnclassifiedFalse(id) : 
@@ -176,7 +187,7 @@ public class ProductController {
                 .collect(Collectors.toList());
         }
 
-        if (keyword != null) {
+        if (keyword != null && !keyword.isBlank()) {
             filteredPatterns = filteredPatterns.stream()
                 .filter(pattern -> productPatternService.isKeywordPresent(pattern, keyword))
                 .collect(Collectors.toList());
@@ -186,6 +197,31 @@ public class ProductController {
 
         ProductPatternDto<ProductPattern> pageDto = productPatternService.convertToPageDto(filteredPatterns, page, size);
         return new ResponseEntity<>(pageDto, HttpStatus.OK);
+    }    
+ */
+    
+ 
+    @GetMapping("/{id}")
+    private ResponseEntity<Page<ProductPattern>> GetProductPatternByWsId2 (
+        @PathVariable UUID id,
+        @RequestParam(required = false) String keyword,
+        @Positive @RequestParam int page, 
+        @Positive @RequestParam int size,
+        @RequestParam(required = false, defaultValue = "false") boolean classified,
+        @RequestParam(required = false, defaultValue = "false") boolean reviewNeeded,
+        @RequestParam(required = false, defaultValue = "false") boolean isException, 
+        HttpServletRequest request,
+        @RemoteIp String clientIp) {
+
+        log.info("ProductPattern Request2 from ws ID : {}, IP : {}", id, clientIp);
+
+        SearchBuilder<ProductPattern> searchBuilder = SearchBuilder.builder();
+        searchBuilder.with("patterns", id, keyword, reviewNeeded, isException, classified);
+        
+        PageRequest pageable = PageRequest.of(page - 1, size, Sort.by(Order.asc("created")));
+        Page<ProductPattern> filteredPatterns = productPatternRepo.findAll(searchBuilder.build(), pageable);
+
+        return new ResponseEntity<>(filteredPatterns, HttpStatus.OK);
     }    
     
     @PutMapping("/{id}")
@@ -274,9 +310,12 @@ public class ProductController {
         log.info("Delete Request to Product Pattern ID : {}, IP : {}", id, clientIp);
 
         try {
-            if (id != null) {
+            if (id != null && productPatternRepo.findById(id) != null) {
                 UUID wsId = productPatternRepo.findById(id).get().getWorkingSetId();
-                productPatternRepo.deleteById(id);   
+                WorkingSet ws = workingSetRepo.findById(wsId).get();
+                productPatternRepo.deleteById(id);
+                ws.setAdded(ws.getAdded() - 1);   
+                workingSetRepo.save(ws);
                 if (productPatternRepo.findByWorkingSetId(wsId).size() < 1) 
                     workingSetRepo.deleteById(wsId);
                 return ResponseEntity.noContent().build(); 

@@ -5,16 +5,17 @@ import java.util.UUID;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.query.Param;
 
 import com.gytni.licenseclassify.model.ProductPattern;
 
 import jakarta.transaction.Transactional;
 
-public interface ProductPatternRepo extends CrudRepository<ProductPattern, UUID> {
+public interface ProductPatternRepo extends JpaRepository<ProductPattern, UUID>, JpaSpecificationExecutor<ProductPattern> {
     List<ProductPattern> findByWorkingSetId(UUID id);
     List<ProductPattern> findByUnclassifiedOrderByCreatedAsc(boolean unclassified);
     List<ProductPattern> findByWorkingSetIdOrderByCreatedDesc(UUID workingSetId);
@@ -24,6 +25,8 @@ public interface ProductPatternRepo extends CrudRepository<ProductPattern, UUID>
     Page<ProductPattern> findByUnclassified(boolean unclassified, Pageable pageable);
     Page<ProductPattern> findByUnclassifiedAndWorkingSetId(Boolean unclassified, UUID workingSetId, Pageable pageable);
     Page<ProductPattern> findAll(Pageable pageable);
+
+    long countByWorkingSetIdAndUnclassifiedFalse(UUID workingSetId);
 
     @Modifying
     @Transactional

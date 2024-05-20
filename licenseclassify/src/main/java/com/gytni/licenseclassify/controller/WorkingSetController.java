@@ -2,11 +2,12 @@ package com.gytni.licenseclassify.controller;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.lang3.time.StopWatch;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.http.HttpStatus;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.gytni.licenseclassify.annotation.RemoteIp;
 import com.gytni.licenseclassify.model.CSVUploadPattern;
 import com.gytni.licenseclassify.model.WorkingSet;
 import com.gytni.licenseclassify.repo.ProductPatternRepo;
@@ -31,6 +33,7 @@ import com.opencsv.RFC4180Parser;
 import com.opencsv.RFC4180ParserBuilder;
 import com.opencsv.bean.CsvToBeanBuilder;
 
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -50,24 +53,33 @@ public class WorkingSetController {
     private ProductPatternRepo productPatternRepo;
 
     @GetMapping("")
-    private ResponseEntity<List<WorkingSet>> getAllWorkingSet() {
-        log.info("get WorkingSet 요청 ");
+    private ResponseEntity<List<WorkingSet>> getAllWorkingSet(HttpServletRequest request, @RemoteIp String clientIp) {
 
-        Iterable<WorkingSet> wsIter = workingSetRepo.findAll();
-        List<WorkingSet> wss = new ArrayList<>();
-        wsIter.forEach(wss::add);
-        if (wss.isEmpty())
-        return ResponseEntity.noContent().build();
-        else {
-            for (WorkingSet ws : wss) {
-                int totalSize = productPatternRepo.findByWorkingSetId(ws.getId()).size();
-                int classifiedSize = productPatternRepo.findByWorkingSetIdAndUnclassifiedFalse(ws.getId()).size();
-                double classifyPercentage = workingSetService.getClassifyPerc(ws.getId()) * 100;
+        log.info("get All WorkingSet Request IP : {}", clientIp);
 
-                String updatedName = String.format("%.0f%%\t%s\t(%d/%d)", classifyPercentage, ws.getName(), classifiedSize, totalSize);
-                ws.setName(updatedName);
-            }
-            return ResponseEntity.ok(wss);
+        StopWatch sw = StopWatch.createStarted();
+
+        try {
+            List<WorkingSet> allWorkingSets = workingSetRepo.findAll();
+
+            if (allWorkingSets.isEmpty()) return ResponseEntity.noContent().build(); // 빠른탈출
+
+            for (WorkingSet ws : allWorkingSets) {
+
+                int total = ws.getAdded();
+                long classifiedSize = productPatternRepo.countByWorkingSetIdAndUnclassifiedFalse(ws.getId());
+                
+                double classifyPercentage = (double) classifiedSize / total * 100;
+                String updatedName = String.format("%.0f%%\t%s\t(%d/%d)", classifyPercentage, ws.getName(), classifiedSize, total);
+                ws.setName(updatedName); 
+            } 
+                
+            return ResponseEntity.ok(allWorkingSets);
+        } catch (Exception e) {
+            log.error("Can not response becuase exception.", e);
+            return ResponseEntity.internalServerError().build();
+        } finally {
+            log.info("Loaded All Workingset in {} ms.", sw.getTime(TimeUnit.MILLISECONDS)); 
         }
     }
 
