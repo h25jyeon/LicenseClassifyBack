@@ -202,7 +202,7 @@ public class ProductController {
     
  
     @GetMapping("/{id}")
-    private ResponseEntity<Page<ProductPattern>> GetProductPatternByWsId2 (
+    private ResponseEntity<Page<ProductPattern>> GetProductPatternByWsId (
         @PathVariable UUID id,
         @RequestParam(required = false) String keyword,
         @Positive @RequestParam int page, 
@@ -218,7 +218,8 @@ public class ProductController {
         SearchBuilder<ProductPattern> searchBuilder = SearchBuilder.builder();
         searchBuilder.with("patterns", id, keyword, reviewNeeded, isException, classified);
         
-        PageRequest pageable = PageRequest.of(page - 1, size, Sort.by(Order.asc("created")));
+        // ProductName으로 정렬 (patterns 는 productName으로 시작함)
+        PageRequest pageable = PageRequest.of(page - 1, size, Sort.by(Order.asc("patterns")));
         Page<ProductPattern> filteredPatterns = productPatternRepo.findAll(searchBuilder.build(), pageable);
 
         return new ResponseEntity<>(filteredPatterns, HttpStatus.OK);
